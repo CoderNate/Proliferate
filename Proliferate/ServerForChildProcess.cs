@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,12 +17,14 @@ namespace Proliferate
         private readonly StreamHandlerFunc _messageHandler;
         private readonly int _maxConcurrentConnections;
         private readonly string _pipeNamePrefix;
+        private readonly TaskScheduler _handlerTaskScheduler;
         public ServerForChildProcess(RequestHandler requestHandler,
-                int maxConcurrentConnections, string pipeNamePrefix)
+                int maxConcurrentConnections, string pipeNamePrefix, TaskScheduler handlerTaskScheduler = null)
         {
             _messageHandler = requestHandler.StreamHandlerFunc;
             _maxConcurrentConnections = maxConcurrentConnections;
             _pipeNamePrefix = pipeNamePrefix;
+            _handlerTaskScheduler = handlerTaskScheduler ?? TaskScheduler.Default;
         }
 
         /// <summary>
@@ -31,8 +32,8 @@ namespace Proliferate
         /// </summary>
         public Task RunAsync(CancellationToken cancellationToken)
         {
-            return Task.Run(() => ProduceConnectionHandlers(cancellationToken, _maxConcurrentConnections,
-                    _pipeNamePrefix, _messageHandler));
+            return ProduceConnectionHandlers(cancellationToken, _maxConcurrentConnections,
+                    _pipeNamePrefix, _messageHandler, _handlerTaskScheduler);
         }
 
         /// <summary>
@@ -44,7 +45,11 @@ namespace Proliferate
         }
 
         private static async Task ProduceConnectionHandlers(
-            CancellationToken cancellationToken, int maxConcurrentConnections, string pipeNamePrefix, StreamHandlerFunc messageHandler)
+                CancellationToken cancellationToken,
+                int maxConcurrentConnections,
+                string pipeNamePrefix,
+                StreamHandlerFunc messageHandler,
+                TaskScheduler handlerTaskScheduler)
         {
             //Make the connectionLostInterval slightly longer than the interval the server uses for sending pings.
             const int connectionLostInterval = Constants.PingIntervalMilliseconds + 100;
@@ -61,8 +66,14 @@ namespace Proliferate
                 while (establishConnectionTasks.Count == 0 && handleRequestTasks.Count < maxConcurrentConnections)
                 {
                     var tcs = new TaskCompletionSource<bool>();
-                    handleRequestTasks.Add(
-                        Task.Run(() => ConnectionHandler(tcs, messageHandler, maxConcurrentConnections, pipeNamePrefix)));
+                    //This is the same as calling Task.Run except that we're specifying the TaskScheduler.
+                    var handleRequestTask = Task.Factory.StartNew(
+                        () => ConnectionHandler(tcs, messageHandler, maxConcurrentConnections, pipeNamePrefix),
+                        CancellationToken.None,
+                        TaskCreationOptions.DenyChildAttach,
+                        handlerTaskScheduler
+                        ).Unwrap();
+                    handleRequestTasks.Add(handleRequestTask);
                     establishConnectionTasks.Add(tcs.Task);
                 }
                 var allTasks = establishConnectionTasks.Concat(handleRequestTasks).ToList();
@@ -126,13 +137,15 @@ namespace Proliferate
                 pipeNamePrefix + "ParentToChild", PipeDirection.In, maxConcurrentConnections))
             {
                 incomingRequestPipe.WaitForConnection();
-                tcs.SetResult(true);
+                tcs.SetResult(true); //Use the TaskCompletionSource to signal that the pipe received a connection.
                 byte[] messageTypeIdBytes = new byte[16];
                 incomingRequestPipe.Read(messageTypeIdBytes, 0, messageTypeIdBytes.Length);
                 var id = new Guid(messageTypeIdBytes);
                 if (id == Constants.ShutdownId)
                     return ConnectionHandlerResult.Shutdown;
 
+                //If the id is not equal to the special Id that indicates no response is needed, then it's
+                //meant to be used as a unique name for the response pipe.
                 var noResponseNeeded = id == Constants.NoResponseNeededId;
                 using (var outgoingResponsePipe = noResponseNeeded ? null :
                         new NamedPipeClientStream(".", id.ToString(), PipeDirection.Out))

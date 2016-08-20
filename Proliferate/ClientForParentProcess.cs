@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Proliferate
@@ -85,7 +84,15 @@ namespace Proliferate
                     PipeDirection.Out))
             {
                 var shutdownIdBytes = Constants.ShutdownId.ToByteArray();
-                outgoingRequestPipe.Connect();
+
+                try
+                {
+                    outgoingRequestPipe.Connect(50);
+                }
+                catch (TimeoutException)
+                {
+                    return;
+                }
                 outgoingRequestPipe.Write(shutdownIdBytes, 0, shutdownIdBytes.Length);
                 //outgoingRequestPipe.Flush();
             }
