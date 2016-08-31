@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Proliferate
 {
-    using StreamHandlerFunc = Func<System.IO.Stream, System.IO.Stream, Task>;
+    using StreamHandlerFunc = Func<PipeReadWrapper, PipeWriteWrapper, Task>;
     using ReaderWriterHandlerFunc = Func<System.IO.StreamReader, System.IO.StreamWriter, Task>;
 
     public static class RequestHandlerFactory
@@ -17,20 +17,20 @@ namespace Proliferate
         }
         public static RequestHandler FromTaskReturning(ReaderWriterHandlerFunc handler)
         {
-            StreamHandlerFunc adapter = (requestStream, responseStream) =>
+            StreamHandlerFunc adapter = (incomingRequestStream, outgoingResponseStream) =>
             {
-                var reader = new System.IO.StreamReader(requestStream);
-                var writer = responseStream == null ? null : new System.IO.StreamWriter(responseStream);
+                var reader = new System.IO.StreamReader(incomingRequestStream);
+                var writer = new System.IO.StreamWriter(outgoingResponseStream);
                 return handler(reader, writer);
             };
             return new RequestHandler(adapter);
         }
 
-        public static RequestHandler FromAction(Action<System.IO.Stream, System.IO.Stream> handler)
+        public static RequestHandler FromAction(Action<PipeReadWrapper, PipeWriteWrapper> handler)
         {
-            StreamHandlerFunc taskReturningWrapper = (requestStream, responseStream) =>
+            StreamHandlerFunc taskReturningWrapper = (incomingRequestStream, outgoingResponseStream) =>
             {
-                handler(requestStream, responseStream);
+                handler(incomingRequestStream, outgoingResponseStream);
                 return Task.FromResult(false);
             };
             return new RequestHandler(taskReturningWrapper);
@@ -38,10 +38,10 @@ namespace Proliferate
 
         public static RequestHandler FromAction(Action<System.IO.StreamReader, System.IO.StreamWriter> handler)
         {
-            StreamHandlerFunc taskReturningWrapper = (requestStream, responseStream) =>
+            StreamHandlerFunc taskReturningWrapper = (incomingRequestStream, outgoingResponseStream) =>
             {
-                var reader = new System.IO.StreamReader(requestStream);
-                var writer = responseStream == null ? null : new System.IO.StreamWriter(responseStream);
+                var reader = new System.IO.StreamReader(incomingRequestStream);
+                var writer = new System.IO.StreamWriter(outgoingResponseStream);
                 handler(reader, writer);
                 try
                 {

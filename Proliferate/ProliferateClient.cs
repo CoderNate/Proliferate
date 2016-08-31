@@ -9,49 +9,50 @@ namespace Proliferate
     /// <summary>
     /// Client used by the parent process for communicating with a child process.
     /// </summary>
-    public class ClientForParentProcess
+    public class ProliferateClient
     {
 
         private readonly string _pipeNamePrefix;
         private readonly string _serverName;
-        public ClientForParentProcess(string pipeNamePrefix, string serverName = ".")
+        public ProliferateClient(string pipeNamePrefix, string serverName = ".")
         {
             _pipeNamePrefix = pipeNamePrefix;
             _serverName = serverName;
         }
 
+        /// <summary>
+        /// Provides write and read wrappers for an underlying pipe connection.
+        /// </summary>
         public struct StreamPair : IDisposable
         {
-            public StreamPair(System.IO.Stream outgoingRequestStream, System.IO.Stream incomingResponseStream)
+            public StreamPair(PipeWriteWrapper outgoingRequestStream, PipeReadWrapper incomingResponseStream,
+                Action disposeUnderlyingPipe)
             {
                 this.OutgoingRequestStream = outgoingRequestStream;
                 this.IncomingResponseStream = incomingResponseStream;
+                this._disposeUnderlyingPipe = disposeUnderlyingPipe;
             }
-            public readonly System.IO.Stream OutgoingRequestStream;
-            public readonly System.IO.Stream IncomingResponseStream;
-
+            public readonly PipeWriteWrapper OutgoingRequestStream;
+            public readonly PipeReadWrapper IncomingResponseStream;
+            private readonly Action _disposeUnderlyingPipe;
             public void Dispose()
             {
-                OutgoingRequestStream.Dispose();
-                IncomingResponseStream.Dispose();
+                _disposeUnderlyingPipe();
             }
         }
 
         public StreamPair GetSendAndReceiveStreams()
         {
             var outgoingRequestPipe = new NamedPipeClientStream(_serverName, _pipeNamePrefix + "ParentToChild",
-                    PipeDirection.Out);
+                    PipeDirection.InOut);
             outgoingRequestPipe.Connect();
-            var responseId = Guid.NewGuid();
-            var idBytes = responseId.ToByteArray();
-            outgoingRequestPipe.Write(idBytes, 0, idBytes.Length);
-
-            var incomingResponsePipe = new NamedPipeServerStream(
-                    responseId.ToString(), PipeDirection.In);
-            incomingResponsePipe.WaitForConnection();
-            return new StreamPair(outgoingRequestPipe, incomingResponsePipe);
+            return new StreamPair(new PipeWriteWrapper(outgoingRequestPipe), 
+                new PipeReadWrapper(outgoingRequestPipe), outgoingRequestPipe.Dispose);
         }
 
+        /// <summary>
+        /// Provides StreamWriter and StreamReader for an underlying pipe connection.
+        /// </summary>
         public struct RequestWriterAndResponseReader : IDisposable
         {
             public RequestWriterAndResponseReader(System.IO.StreamWriter outgoingRequestWriter,
@@ -83,7 +84,7 @@ namespace Proliferate
             using (var outgoingRequestPipe = new NamedPipeClientStream(_serverName, _pipeNamePrefix + "ParentToChild",
                     PipeDirection.Out))
             {
-                var shutdownIdBytes = Constants.ShutdownId.ToByteArray();
+                var shutdownIdBytes = BitConverter.GetBytes(Constants.ShutdownId); // Constants.ShutdownId.ToByteArray();
 
                 try
                 {
@@ -97,19 +98,10 @@ namespace Proliferate
                 //outgoingRequestPipe.Flush();
             }
         }
-
-        public System.IO.Stream GetSendStream()
-        {
-            var outgoingRequestPipe = new NamedPipeClientStream(_serverName, _pipeNamePrefix + "ParentToChild",
-              PipeDirection.Out);
-            outgoingRequestPipe.Connect();
-            var noResponseId = Constants.NoResponseNeededId;
-            var idBytes = noResponseId.ToByteArray();
-            outgoingRequestPipe.Write(idBytes, 0, idBytes.Length);
-            return outgoingRequestPipe;
-        }
-
-        private System.Threading.Timer _pingingTimer;
+        
+        /// <summary>
+        /// Start a <see cref="System.Threading.Timer"/> that sends pings to the child process to keep it from shutting down.
+        /// </summary>
         public void StartChildPinger(System.Threading.CancellationToken cancellationToken)
         {
             var timer = new System.Threading.Timer(state =>
@@ -122,8 +114,7 @@ namespace Proliferate
                 }
             }, null, Constants.PingIntervalMilliseconds, Constants.PingIntervalMilliseconds);
             cancellationToken.Register(() => timer.Dispose());
-            //We only need to store the timer in a field to prevent it from being garbage collected.
-            _pingingTimer = timer;
+            //No need to store the timer in a private field; it will not get garbage collected while it's running.
         }
 
     }

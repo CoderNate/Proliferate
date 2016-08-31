@@ -2,23 +2,24 @@
 using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Proliferate
 {
-    using StreamHandlerFunc = Func<System.IO.Stream, System.IO.Stream, Task>;
+    using StreamHandlerFunc = Func<PipeReadWrapper, PipeWriteWrapper, Task>;
     
     /// <summary>
     /// Server used by the child process to handle requests from the parent process.
     /// </summary>
-    public class ServerForChildProcess
+    public class ProliferateServer
     {
         private readonly StreamHandlerFunc _messageHandler;
         private readonly int _maxConcurrentConnections;
         private readonly string _pipeNamePrefix;
         private readonly TaskScheduler _handlerTaskScheduler;
-        public ServerForChildProcess(RequestHandler requestHandler,
+        public ProliferateServer(RequestHandler requestHandler,
                 int maxConcurrentConnections, string pipeNamePrefix, TaskScheduler handlerTaskScheduler = null)
         {
             _messageHandler = requestHandler.StreamHandlerFunc;
@@ -134,26 +135,17 @@ namespace Proliferate
                 StreamHandlerFunc messageHandler, int maxConcurrentConnections, string pipeNamePrefix)
         {
             using (var incomingRequestPipe = new NamedPipeServerStream(
-                pipeNamePrefix + "ParentToChild", PipeDirection.In, maxConcurrentConnections))
+                pipeNamePrefix + "ParentToChild", PipeDirection.InOut, maxConcurrentConnections))
             {
                 incomingRequestPipe.WaitForConnection();
-                tcs.SetResult(true); //Use the TaskCompletionSource to signal that the pipe received a connection.
-                byte[] messageTypeIdBytes = new byte[16];
-                incomingRequestPipe.Read(messageTypeIdBytes, 0, messageTypeIdBytes.Length);
-                var id = new Guid(messageTypeIdBytes);
-                if (id == Constants.ShutdownId)
-                    return ConnectionHandlerResult.Shutdown;
-
-                //If the id is not equal to the special Id that indicates no response is needed, then it's
-                //meant to be used as a unique name for the response pipe.
-                var noResponseNeeded = id == Constants.NoResponseNeededId;
-                using (var outgoingResponsePipe = noResponseNeeded ? null :
-                        new NamedPipeClientStream(".", id.ToString(), PipeDirection.Out))
+                tcs.SetResult(true); //Use the TaskCompletionSource to signal back that the pipe received a connection.
+                var readWrapper = new PipeReadWrapper(incomingRequestPipe);
+                if (readWrapper.CheckRemainingByteChunkSize() == Constants.ShutdownId)
                 {
-                    if (!noResponseNeeded)
-                        outgoingResponsePipe.Connect();
-                    await messageHandler(incomingRequestPipe, outgoingResponsePipe);
+                    return ConnectionHandlerResult.Shutdown;
                 }
+                await messageHandler(readWrapper,
+                    new PipeWriteWrapper(incomingRequestPipe));
             }
             return ConnectionHandlerResult.Normal;
         }
