@@ -16,14 +16,14 @@ namespace Proliferate.Example
             var pipeNamePrefix = System.Guid.NewGuid().ToString("N");
 
             var childProcessMainMethod = typeof(ChildProcess).GetMethod("Start");
-            var w2 = System.Diagnostics.Stopwatch.StartNew();
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             var exePath = ExecutableGenerator.Instance.GenerateExecutable(childProcessMainMethod, 
                 ExecutableType.Default, "Launcher");
-            var elapsed = w2.Elapsed.ToString();
+            Console.WriteLine("Generating executable took: " + watch.Elapsed.ToString());
             //The CreateNoWindow option reduces startup time of the child process.
             var startInfo = new System.Diagnostics.ProcessStartInfo(exePath, pipeNamePrefix)
             { CreateNoWindow = true, UseShellExecute = false };
-            var w = System.Diagnostics.Stopwatch.StartNew();
+            watch.Restart();
             var proc = System.Diagnostics.Process.Start(startInfo);
             
 
@@ -37,7 +37,7 @@ namespace Proliferate.Example
                     var buffer = new byte[1024];
                     var read = streams.IncomingResponseStream.Read(buffer, 0, buffer.Length);
                 }
-                Console.WriteLine("Time from process start until response received: " + w.Elapsed.ToString());
+                Console.WriteLine("Time from process start until response received: " + watch.Elapsed.ToString());
                 while (true)
                 {
                     Console.WriteLine("Enter a string to send to the child process or press enter to end the program...");

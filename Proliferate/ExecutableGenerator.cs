@@ -27,13 +27,15 @@ namespace Proliferate
         /// <summary>
         /// Generates an executable that does nothing but call a given method.
         /// </summary>
-        public string GenerateExecutable(MethodInfo methodToCall, ExecutableType executableType, string assemblyName = "generator")
+        public string GenerateExecutable(MethodInfo methodToCall, ExecutableType executableType,
+                string assemblyName)
         {
+            var saveDir = System.IO.Path.GetDirectoryName(typeof(ExecutableGenerator).Assembly.Location);
             var w = System.Diagnostics.Stopwatch.StartNew();
             //From http://stackoverflow.com/a/15602171
             var executableFileName = assemblyName + ".exe";
             AssemblyBuilder assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(
-                new AssemblyName(assemblyName), AssemblyBuilderAccess.Save);
+                new AssemblyName(assemblyName), AssemblyBuilderAccess.Save, saveDir);
             ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule(
                 assemblyName, executableFileName);
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Program",
@@ -67,8 +69,7 @@ namespace Proliferate
             }
             assemblyBuilder.Save(executableFileName, peKind, machine);
             var elapsed = w.Elapsed.ToString();
-            var thisDir = System.IO.Path.GetDirectoryName(typeof(ExecutableGenerator).Assembly.Location);
-            return System.IO.Path.Combine(thisDir, executableFileName);
+            return System.IO.Path.Combine(saveDir, executableFileName);
         }
 
         //public void RunTheExe(string exeFilePath)

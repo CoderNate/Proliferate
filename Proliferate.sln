@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proliferate.Example", "Prol
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proliferate.WCFcomparison", "Proliferate.WCFcomparison\Proliferate.WCFcomparison.csproj", "{A1C36F60-0D2A-4913-98C9-F889BDCAE07A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Proliferate.Tests", "Proliferate.Tests\Proliferate.Tests.csproj", "{64A1D02C-D487-4E04-AC57-99BD502175A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{A1C36F60-0D2A-4913-98C9-F889BDCAE07A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1C36F60-0D2A-4913-98C9-F889BDCAE07A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1C36F60-0D2A-4913-98C9-F889BDCAE07A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64A1D02C-D487-4E04-AC57-99BD502175A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64A1D02C-D487-4E04-AC57-99BD502175A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64A1D02C-D487-4E04-AC57-99BD502175A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64A1D02C-D487-4E04-AC57-99BD502175A1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

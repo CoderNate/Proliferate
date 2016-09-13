@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading.Tasks;
 
 namespace Proliferate
@@ -77,6 +78,35 @@ namespace Proliferate
             return new RequestWriterAndResponseReader(
                 new System.IO.StreamWriter(pair.OutgoingRequestStream),
                 new System.IO.StreamReader(pair.IncomingResponseStream));
+        }
+
+        public class Messenger<Trequest, Tresponse>: IDisposable
+        {
+            private readonly StreamPair _streamPair;
+            private readonly BinaryFormatter _formatter = new BinaryFormatter();
+            public Messenger(StreamPair streamPair)
+            {
+                _streamPair = streamPair;
+            }
+
+            public void Dispose()
+            {
+                _streamPair.Dispose();
+            }
+
+            public Tresponse SendRequest(Trequest requestMessage)
+            {
+                _formatter.Serialize(_streamPair.OutgoingRequestStream, requestMessage);
+                _streamPair.OutgoingRequestStream.Close();
+                _streamPair.IncomingResponseStream.CheckRemainingByteChunkSize();
+                return (Tresponse)_formatter.Deserialize(_streamPair.IncomingResponseStream);
+            }
+        }
+
+        public Messenger<Trequest, Tresponse> GetMessenger<Trequest, Tresponse>()
+        {
+            var pair = GetSendAndReceiveStreams();
+            return new Messenger<Trequest, Tresponse>(pair);
         }
 
         public void SendShutdown()

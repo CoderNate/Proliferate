@@ -2,3 +2,4 @@
 *.user
 **/obj/
 **/debug/
+/packages/

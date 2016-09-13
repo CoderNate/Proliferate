@@ -23,12 +23,13 @@ namespace Proliferate.Example
             var w = System.Diagnostics.Stopwatch.StartNew();
             var proc = System.Diagnostics.Process.Start(startInfo);
 
-            ChannelFactory<ISomeService> pipeFactory = null;
             ISomeService pipeProxy = null;
-            pipeFactory =
+            ChannelFactory<ISomeService> pipeFactory =
               new ChannelFactory<ISomeService>(
                 new NetNamedPipeBinding() { OpenTimeout = TimeSpan.FromSeconds(3), ReceiveTimeout = TimeSpan.FromSeconds(3) },
                 new EndpointAddress("net.pipe://localhost/SomeService"));
+            //Don't know a better way to wait for the other end to be ready before calling CreateChannel().
+            //So just catch the EndpointNotFoundException and keep retrying.
             while (true)
             {
                 try
@@ -37,8 +38,8 @@ namespace Proliferate.Example
                     pipeProxy.DoSomethingWithAstring("Hello");
                     break;
                 }
-                catch (Exception)
-                { }
+                catch (EndpointNotFoundException)
+                {}
             }
             Console.WriteLine("Time from process start until response received: " + w.Elapsed.ToString());
             Console.ReadKey();
@@ -76,22 +77,24 @@ namespace Proliferate.Example
     
     public class ChildProcess
     {
+        /// <summary>
+        /// Hosts the service until <see cref="ISomeService.Close"/> is called.
+        /// </summary>
         public static void Start(string[] args)
         {
             var svc = new SomeService();
             using (var host = new ServiceHost(svc, new[] { new Uri("net.pipe://localhost") }))
             {
-                host.AddServiceEndpoint(typeof(ISomeService),
-                  new NetNamedPipeBinding(), "SomeService");
+                host.AddServiceEndpoint(typeof(ISomeService), new NetNamedPipeBinding(), "SomeService");
 
                 host.Open();
-                var evt = new System.Threading.ManualResetEvent(false);
+                var requestCloseEvt = new System.Threading.ManualResetEvent(false);
                 svc.RequestClose += (sender, e) =>
                 {
-                    evt.Set();
+                    requestCloseEvt.Set();
                 };
                 Console.WriteLine("Service is available.");
-                evt.WaitOne();
+                requestCloseEvt.WaitOne();
                 
                 host.Close();
             }
