@@ -23,8 +23,10 @@ namespace Proliferate
             StreamHandlerFunc adapter = (incomingRequestStream, outgoingResponseStream) =>
             {
                 var reader = new System.IO.StreamReader(incomingRequestStream);
-                var writer = new System.IO.StreamWriter(outgoingResponseStream);
-                return handler(reader, writer);
+                using (var writer = new System.IO.StreamWriter(outgoingResponseStream))
+                {
+                    return handler(reader, writer);
+                }
             };
             return new RequestHandler(adapter);
         }
@@ -59,15 +61,9 @@ namespace Proliferate
             StreamHandlerFunc taskReturningWrapper = (incomingRequestStream, outgoingResponseStream) =>
             {
                 var reader = new System.IO.StreamReader(incomingRequestStream);
-                var writer = new System.IO.StreamWriter(outgoingResponseStream);
-                handler(reader, writer);
-                try
+                using (var writer = new System.IO.StreamWriter(outgoingResponseStream))
                 {
-                    writer.Flush();
-                }
-                catch (System.IO.IOException)
-                {
-                    //If the pipe is already closed, we'll get an IOException, but that's okay.
+                    handler(reader, writer);
                 }
                 return Task.FromResult(false); //The value false isn't used for anything, just need a task.
             };

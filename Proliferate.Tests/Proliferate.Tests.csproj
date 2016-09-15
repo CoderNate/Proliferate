@@ -74,9 +74,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="StreamReaderWriterTests.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tests.cs" />
+    <Compile Include="BinaryFormatterTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

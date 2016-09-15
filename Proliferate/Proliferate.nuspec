@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <authors>CoderNate</authors>
+    <licenseUrl>https://raw.githubusercontent.com/CoderNate/Proliferate/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/CoderNate/Proliferate</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+	<summary>Dynamically generates executable launcher files that are used to start child process and provides a means to communicate with the processes over named pipes. This way the code that runs in your main process can live in the same assembly with the code that runs in the child process (no need to add another project to your solution for the child EXE).</summary>
+    <tags>spawn child process ipc pipes</tags>
+    <dependencies>
+    </dependencies>
+  </metadata>
+</package>

@@ -144,8 +144,10 @@ namespace Proliferate
                 {
                     return ConnectionHandlerResult.Shutdown;
                 }
-                await messageHandler(readWrapper,
-                    new PipeWriteWrapper(incomingRequestPipe));
+                using (var writeWrapper = new PipeWriteWrapper(incomingRequestPipe))
+                {
+                    await messageHandler(readWrapper, writeWrapper);
+                }
             }
             return ConnectionHandlerResult.Normal;
         }

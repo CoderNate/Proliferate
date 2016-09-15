@@ -10,9 +10,11 @@ namespace Proliferate.Tests
     {
         static void Main(string[] args)
         {
-            var tests = new BinaryFormatterTests();
-            tests.TestBinaryFormatterWithSmallMessage();
-            tests.TestBinaryFormatterWithLargeMessage();
+            //Use the NUnit test runner to run the tests in this project. This
+            //method is only used for debugging purposes so that visual studio will
+            //break on exceptions instead of having to track things down from a stack trace.
+            var srwTests = new StreamReaderWriterTests();
+            srwTests.TestSimultaneousRequests();
         }
     }
 }

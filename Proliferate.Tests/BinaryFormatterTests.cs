@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -32,10 +33,8 @@ namespace Proliferate.Tests
 
             var childProcessMainMethod = typeof(ChildProcess).GetMethod("Start");
             var exePath = ExecutableGenerator.Instance.GenerateExecutable(childProcessMainMethod,
-                ExecutableType.Default, launcherExeName);
-            //The CreateNoWindow option reduces startup time of the child process.
-            var startInfo = new System.Diagnostics.ProcessStartInfo(exePath, pipeNamePrefix);
-            var proc = System.Diagnostics.Process.Start(startInfo);
+                    ExecutableType.Default, launcherExeName);
+            var proc = Process.Start(new ProcessStartInfo(exePath, pipeNamePrefix));
             
             var client = new Proliferate.ProliferateClient(pipeNamePrefix);
             using (var cancelTokenSource = new System.Threading.CancellationTokenSource())
@@ -70,8 +69,6 @@ namespace Proliferate.Tests
             }
             private static async Task<Msg> TestHandler(Msg requestMsg)
             {
-                Console.WriteLine("Child process is handling a request on thread "
-                        + System.Threading.Thread.CurrentThread.ManagedThreadId.ToString());
                 await Task.Delay(1);
                 Console.WriteLine("Child process finished handling a request.");
                 return requestMsg;

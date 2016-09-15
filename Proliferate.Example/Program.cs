@@ -34,6 +34,8 @@ namespace Proliferate.Example
                 using (var streams = client.GetSendAndReceiveStreams())
                 {
                     streams.OutgoingRequestStream.Close();
+                    //If we don't read the response from the child process, there will be an IO exception
+                    //in the child process while it tries to write a response back.
                     var buffer = new byte[1024];
                     var read = streams.IncomingResponseStream.Read(buffer, 0, buffer.Length);
                 }
