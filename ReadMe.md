@@ -1,5 +1,5 @@
 # Proliferate
-Proliferate dynamically generates executable launcher files that are used to start child process and provides a means to communicate with the processes over named pipes. This way the code that runs in your main process can live in the same assembly with the code that runs in the child process (no need to add another project to your solution for the child EXE).
+Proliferate dynamically generates executable launcher files that are used to start child process and provides a means to communicate with the processes over named pipes. This way the code that runs in your main process can live in the same assembly as the code that runs in the child process (no need to add another project to your solution for the child EXE).
 Available on [NuGet](http://nuget.org/packages/Proliferate)
 ### Features:
 * Uses Reflection.Emit to dynamically generate a tiny executable file for launching a child process (don't worry this only takes ~20ms).

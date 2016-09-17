@@ -96,8 +96,12 @@ namespace Proliferate
 
             public Tresponse SendRequest(Trequest requestMessage)
             {
-                _formatter.Serialize(_streamPair.OutgoingRequestStream, requestMessage);
-                _streamPair.OutgoingRequestStream.Close();
+                //Using a buffered stream speeds things up by making fewer/larger
+                //writes to the pipe.
+                using (var bufferedStream = new System.IO.BufferedStream(_streamPair.OutgoingRequestStream))
+                {
+                    _formatter.Serialize(bufferedStream, requestMessage);
+                }
                 _streamPair.IncomingResponseStream.CheckRemainingByteChunkSize();
                 return (Tresponse)_formatter.Deserialize(_streamPair.IncomingResponseStream);
             }
